@@ -165,7 +165,7 @@
             display: block;
         }
 
-        /* Rest of the styles from original */
+        /* Navigation and main app styles */
         .nav-tabs {
             display: flex;
             background: #f8f9fa;
@@ -422,6 +422,102 @@
             color: #999;
         }
 
+        /* Parts Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 20px;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f1f3f4;
+        }
+
+        .modal-header h2 {
+            color: #1B4332;
+            margin: 0;
+        }
+
+        .close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close:hover {
+            color: #DC2626;
+        }
+
+        .parts-section {
+            margin-bottom: 25px;
+        }
+
+        .parts-section h3 {
+            color: #2E86AB;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .parts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .part-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #2E86AB;
+        }
+
+        .part-item strong {
+            color: #1B4332;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .form-section h3 {
+            color: #2E86AB;
+            margin-bottom: 15px;
+        }
+
         @media (max-width: 768px) {
             .nav-tabs {
                 flex-direction: column;
@@ -448,6 +544,16 @@
                 right: 10px;
                 left: 10px;
                 max-width: none;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 10px;
+                padding: 20px;
+            }
+
+            .parts-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -479,6 +585,19 @@
                 
                 <button type="submit" class="btn btn-primary">Sign In</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Parts Modal -->
+    <div id="partsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="partsModalTitle">Equipment Parts & Fluids</h2>
+                <button class="close" onclick="closePartsModal()">&times;</button>
+            </div>
+            <div id="partsModalBody">
+                <!-- Parts content will be dynamically loaded here -->
+            </div>
         </div>
     </div>
 
@@ -540,128 +659,10 @@
             <div id="equipment" class="tab-content">
                 <h2>Add New Equipment</h2>
                 <form id="equipmentForm">
-                    <div class="form-grid">
-                        <div class="app-form-group">
-                            <label>Equipment ID *</label>
-                            <input type="text" id="equipmentId" required>
-                        </div>
-                        <div class="app-form-group">
-                            <label>Equipment Name *</label>
-                            <input type="text" id="equipmentName" required>
-                        </div>
-                        <div class="app-form-group">
-                            <label>Type *</label>
-                            <select id="equipmentType" required>
-                                <option value="">Select Type</option>
-                                <option value="Dump Trucks">Dump Trucks</option>
-                                <option value="Trucks">Trucks</option>
-                                <option value="Trailers">Trailers</option>
-                                <option value="Paving">Paving</option>
-                                <option value="Skids/Excavation">Skids/Excavation</option>
-                                <option value="Rollers">Rollers</option>
-                                <option value="Sealcoat">Sealcoat</option>
-                                <option value="Crack Fill">Crack Fill</option>
-                                <option value="Shop Equipment">Shop Equipment</option>
-                                <option value="Small Engine">Small Engine</option>
-                                <option value="Misc">Misc</option>
-                            </select>
-                        </div>
-                        <div class="app-form-group">
-                            <label>Make</label>
-                            <input type="text" id="equipmentMake">
-                        </div>
-                        <div class="app-form-group">
-                            <label>Model</label>
-                            <input type="text" id="equipmentModel">
-                        </div>
-                        <div class="app-form-group">
-                            <label>Year</label>
-                            <input type="number" id="equipmentYear" min="1900" max="2030">
-                        </div>
-                        <div class="app-form-group">
-                            <label>Status *</label>
-                            <select id="equipmentStatus" required>
-                                <option value="Active">Active</option>
-                                <option value="Maintenance">Maintenance</option>
-                                <option value="Repair">Repair</option>
-                                <option value="DOT">DOT</option>
-                                <option value="Inactive">Inactive</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary">Add Equipment</button>
-                </form>
-
-                <div class="search-filter">
-                    <input type="text" id="equipmentSearch" placeholder="Search equipment...">
-                    <select id="equipmentFilter">
-                        <option value="">All Types</option>
-                        <option value="Dump Trucks">Dump Trucks</option>
-                        <option value="Trucks">Trucks</option>
-                        <option value="Trailers">Trailers</option>
-                        <option value="Paving">Paving</option>
-                        <option value="Skids/Excavation">Skids/Excavation</option>
-                        <option value="Rollers">Rollers</option>
-                        <option value="Sealcoat">Sealcoat</option>
-                        <option value="Crack Fill">Crack Fill</option>
-                        <option value="Shop Equipment">Shop Equipment</option>
-                        <option value="Small Engine">Small Engine</option>
-                        <option value="Misc">Misc</option>
-                    </select>
-                    <button class="btn export-btn" onclick="exportData('equipment')">Export</button>
-                </div>
-
-                <table class="data-table" id="equipmentTable">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Type</th>
-                            <th>Make/Model</th>
-                            <th>Year</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-            <div id="maintenance" class="tab-content">
-                <h2>Add Maintenance Record</h2>
-                <form id="maintenanceForm">
-                    <div class="form-grid">
-                        <div class="app-form-group">
-                            <label>Equipment *</label>
-                            <select id="maintenanceEquipment" required>
-                                <option value="">Select Equipment</option>
-                            </select>
-                        </div>
-                        <div class="app-form-group">
-                            <label>Maintenance Type *</label>
-                            <select id="maintenanceType" required>
-                                <option value="">Select Type</option>
-                                <option value="Oil Change">Oil Change</option>
-                                <option value="Tire Replacement">Tire Replacement</option>
-                                <option value="Brake Service">Brake Service</option>
-                                <option value="Engine Repair">Engine Repair</option>
-                                <option value="Transmission Service">Transmission Service</option>
-                                <option value="DOT Inspection">DOT Inspection</option>
-                                <option value="Preventive Maintenance">Preventive Maintenance</option>
-                                <option value="Emergency Repair">Emergency Repair</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div class="app-form-group">
-                            <label>Date Performed *</label>
-                            <input type="date" id="maintenanceDate" required>
-                        </div>
-                        <div class="app-form-group">
-                            <label>Cost ($)</label>
-                            <input type="number" id="maintenanceCost" step="0.01" min="0">
-                        </div>
-                        <div class="app-form-group">
+                    <div class="form-section">
+                        <h3>Basic Information</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
                             <label>Technician/Shop</label>
                             <input type="text" id="maintenanceTechnician">
                         </div>
@@ -965,6 +966,29 @@
                 model: document.getElementById('equipmentModel').value || '',
                 year: document.getElementById('equipmentYear').value || '',
                 status: document.getElementById('equipmentStatus').value,
+                // Tire specifications
+                frontTireSize: document.getElementById('frontTireSize').value || '',
+                tagAxle1TireSize: document.getElementById('tagAxle1TireSize').value || '',
+                tagAxle2TireSize: document.getElementById('tagAxle2TireSize').value || '',
+                driveAxle1TireSize: document.getElementById('driveAxle1TireSize').value || '',
+                driveAxle2TireSize: document.getElementById('driveAxle2TireSize').value || '',
+                // Engine & Filters
+                oilFilterNumber: document.getElementById('oilFilterNumber').value || '',
+                oilType: document.getElementById('oilType').value || '',
+                oilQuantity: document.getElementById('oilQuantity').value || '',
+                fuelFilterNumber: document.getElementById('fuelFilterNumber').value || '',
+                airFilterNumber: document.getElementById('airFilterNumber').value || '',
+                // Transmission
+                transFilterNumber: document.getElementById('transFilterNumber').value || '',
+                transOilType: document.getElementById('transOilType').value || '',
+                transOilQuantity: document.getElementById('transOilQuantity').value || '',
+                // Hydraulic System
+                hydraulicFilterNumber: document.getElementById('hydraulicFilterNumber').value || '',
+                hydraulicOilType: document.getElementById('hydraulicOilType').value || '',
+                hydraulicOilQuantity: document.getElementById('hydraulicOilQuantity').value || '',
+                // Coolant System
+                coolantType: document.getElementById('coolantType').value || '',
+                coolantQuantity: document.getElementById('coolantQuantity').value || '',
                 dateAdded: new Date().toISOString(),
                 addedBy: currentUser
             };
@@ -1010,6 +1034,7 @@
                     <td>${equipment.year || '-'}</td>
                     <td><span class="status ${(equipment.status || '').toLowerCase()}">${equipment.status || ''}</span></td>
                     <td>
+                        <button class="btn btn-info" onclick="showPartsModal('${equipment.id}')" style="padding: 5px 10px; font-size: 12px; margin-right: 5px;">Parts/Fluids</button>
                         <button class="btn btn-danger" onclick="deleteEquipment('${equipment.id}')" style="padding: 5px 10px; font-size: 12px;">Delete</button>
                     </td>
                 `;
@@ -1110,6 +1135,147 @@
             }
         }
 
+        window.showPartsModal = function(equipmentId) {
+            const equipment = equipmentData.find(eq => eq.id === equipmentId);
+            if (!equipment) return;
+
+            document.getElementById('partsModalTitle').textContent = `Parts & Fluids - ${equipment.name}`;
+            
+            const modalBody = document.getElementById('partsModalBody');
+            modalBody.innerHTML = `
+                <div class="parts-section">
+                    <h3>🛞 Tire Specifications</h3>
+                    <div class="parts-grid">
+                        <div class="part-item">
+                            <strong>Front Axle:</strong> ${equipment.frontTireSize || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Tag Axle 1:</strong> ${equipment.tagAxle1TireSize || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Tag Axle 2:</strong> ${equipment.tagAxle2TireSize || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Drive Axle 1:</strong> ${equipment.driveAxle1TireSize || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Drive Axle 2:</strong> ${equipment.driveAxle2TireSize || 'Not specified'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="parts-section">
+                    <h3>🔧 Engine & Filters</h3>
+                    <div class="parts-grid">
+                        <div class="part-item">
+                            <strong>Oil Filter:</strong> ${equipment.oilFilterNumber || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Oil Type:</strong> ${equipment.oilType || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Oil Quantity:</strong> ${equipment.oilQuantity ? equipment.oilQuantity + ' quarts' : 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Fuel Filter:</strong> ${equipment.fuelFilterNumber || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Air Filter:</strong> ${equipment.airFilterNumber || 'Not specified'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="parts-section">
+                    <h3>⚙️ Transmission</h3>
+                    <div class="parts-grid">
+                        <div class="part-item">
+                            <strong>Transmission Filter:</strong> ${equipment.transFilterNumber || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Trans Oil Type:</strong> ${equipment.transOilType || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Trans Oil Quantity:</strong> ${equipment.transOilQuantity ? equipment.transOilQuantity + ' quarts' : 'Not specified'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="parts-section">
+                    <h3>🔩 Hydraulic System</h3>
+                    <div class="parts-grid">
+                        <div class="part-item">
+                            <strong>Hydraulic Filter:</strong> ${equipment.hydraulicFilterNumber || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Hydraulic Oil Type:</strong> ${equipment.hydraulicOilType || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Hydraulic Oil Quantity:</strong> ${equipment.hydraulicOilQuantity ? equipment.hydraulicOilQuantity + ' gallons' : 'Not specified'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="parts-section">
+                    <h3>❄️ Coolant System</h3>
+                    <div class="parts-grid">
+                        <div class="part-item">
+                            <strong>Coolant Type:</strong> ${equipment.coolantType || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Coolant Quantity:</strong> ${equipment.coolantQuantity ? equipment.coolantQuantity + ' gallons' : 'Not specified'}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; text-align: center;">
+                    <button class="btn btn-success" onclick="exportEquipmentParts('${equipmentId}')">Export Parts List</button>
+                </div>
+            `;
+
+            document.getElementById('partsModal').classList.add('show');
+        }
+
+        window.closePartsModal = function() {
+            document.getElementById('partsModal').classList.remove('show');
+        }
+
+        window.exportEquipmentParts = function(equipmentId) {
+            const equipment = equipmentData.find(eq => eq.id === equipmentId);
+            if (!equipment) return;
+
+            const partsData = [
+                ['Category', 'Item', 'Specification/Part Number', 'Quantity'],
+                ['Basic Info', 'Equipment ID', equipment.equipmentId || '', ''],
+                ['Basic Info', 'Name', equipment.name || '', ''],
+                ['Basic Info', 'Make/Model', `${equipment.make || ''} ${equipment.model || ''}`.trim(), ''],
+                ['Basic Info', 'Year', equipment.year || '', ''],
+                ['Tires', 'Front Axle', equipment.frontTireSize || '', '2'],
+                ['Tires', 'Tag Axle 1', equipment.tagAxle1TireSize || '', '2'],
+                ['Tires', 'Tag Axle 2', equipment.tagAxle2TireSize || '', '2'],
+                ['Tires', 'Drive Axle 1', equipment.driveAxle1TireSize || '', '4'],
+                ['Tires', 'Drive Axle 2', equipment.driveAxle2TireSize || '', '4'],
+                ['Engine', 'Oil Filter', equipment.oilFilterNumber || '', '1'],
+                ['Engine', 'Oil Type', equipment.oilType || '', equipment.oilQuantity || ''],
+                ['Engine', 'Fuel Filter', equipment.fuelFilterNumber || '', '1'],
+                ['Engine', 'Air Filter', equipment.airFilterNumber || '', '1'],
+                ['Transmission', 'Trans Filter', equipment.transFilterNumber || '', '1'],
+                ['Transmission', 'Trans Oil Type', equipment.transOilType || '', equipment.transOilQuantity || ''],
+                ['Hydraulics', 'Hydraulic Filter', equipment.hydraulicFilterNumber || '', '1'],
+                ['Hydraulics', 'Hydraulic Oil Type', equipment.hydraulicOilType || '', equipment.hydraulicOilQuantity || ''],
+                ['Coolant', 'Coolant Type', equipment.coolantType || '', equipment.coolantQuantity || '']
+            ];
+
+            let csv = partsData.map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${equipment.name}_parts_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
         window.showTab = function(tabName) {
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -1157,6 +1323,7 @@
                     <td>${equipment.year || '-'}</td>
                     <td><span class="status ${(equipment.status || '').toLowerCase()}">${equipment.status || ''}</span></td>
                     <td>
+                        <button class="btn btn-info" onclick="showPartsModal('${equipment.id}')" style="padding: 5px 10px; font-size: 12px; margin-right: 5px;">Parts/Fluids</button>
                         <button class="btn btn-danger" onclick="deleteEquipment('${equipment.id}')" style="padding: 5px 10px; font-size: 12px;">Delete</button>
                     </td>
                 `;
@@ -1187,179 +1354,227 @@
         }
 
         function displayFilteredMaintenance(filteredData) {
-            const tbody = document.querySelector('#maintenanceTable tbody');
-            if (!tbody) return;
-            
-            tbody.innerHTML = '';
-            
-            filteredData.forEach((maintenance) => {
-                const equipment = equipmentData.find(eq => eq.id === maintenance.equipmentId);
-                const equipmentName = equipment ? equipment.name : 'Unknown Equipment';
-                
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td>${new Date(maintenance.date).toLocaleDateString()}</td>
-                    <td>${equipmentName}</td>
-                    <td>${maintenance.type || ''}</td>
-                    <td>${(maintenance.cost || 0).toFixed(2)}</td>
-                    <td>${maintenance.technician || '-'}</td>
-                    <td>${maintenance.description || '-'}</td>
-                    <td>
-                        <button class="btn btn-danger" onclick="deleteMaintenance('${maintenance.id}')" style="padding: 5px 10px; font-size: 12px;">Delete</button>
-                    </td>
-                `;
-            });
-        }
-
-        window.exportData = function(type) {
-            let data, filename, headers;
-            
-            if (type === 'equipment') {
-                data = equipmentData;
-                filename = `${currentCompany}_equipment_${new Date().toISOString().split('T')[0]}.csv`;
-                headers = ['Equipment ID', 'Name', 'Type', 'Make', 'Model', 'Year', 'Status'];
-            } else if (type === 'maintenance') {
-                data = maintenanceData.map(maintenance => {
-                    const equipment = equipmentData.find(eq => eq.id === maintenance.equipmentId);
-                    return {
-                        ...maintenance,
-                        equipmentName: equipment ? equipment.name : 'Unknown Equipment'
-                    };
-                });
-                filename = `${currentCompany}_maintenance_${new Date().toISOString().split('T')[0]}.csv`;
-                headers = ['Date', 'Equipment', 'Type', 'Cost', 'Technician', 'Description'];
-            }
-            
-            downloadCSV(data, headers, filename, type);
-        }
-
-        function downloadCSV(data, headers, filename, type) {
-            let csv = headers.join(',') + '\n';
-            
-            data.forEach(item => {
-                let row = [];
-                if (type === 'equipment') {
-                    row = [
-                        item.equipmentId || '',
-                        item.name || '',
-                        item.type || '',
-                        item.make || '',
-                        item.model || '',
-                        item.year || '',
-                        item.status || ''
-                    ];
-                } else if (type === 'maintenance') {
-                    row = [
-                        item.date || '',
-                        item.equipmentName || '',
-                        item.type || '',
-                        item.cost || 0,
-                        item.technician || '',
-                        item.description || ''
-                    ];
-                }
-                csv += row.map(field => `"${field}"`).join(',') + '\n';
-            });
-            
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            window.URL.revokeObjectURL(url);
-        }
-
-        window.generateReport = function() {
-            const reportType = document.getElementById('reportType').value;
-            const dateFrom = document.getElementById('reportDateFrom').value;
-            const dateTo = document.getElementById('reportDateTo').value;
-            
-            let reportData = maintenanceData;
-            
-            if (dateFrom || dateTo) {
-                reportData = maintenanceData.filter(maintenance => {
-                    const maintenanceDate = new Date(maintenance.date);
-                    const fromDate = dateFrom ? new Date(dateFrom) : new Date('1900-01-01');
-                    const toDate = dateTo ? new Date(dateTo) : new Date();
-                    
-                    return maintenanceDate >= fromDate && maintenanceDate <= toDate;
-                });
-            }
-            
-            generateReportDisplay(reportType, reportData);
-        }
-
-        function generateReportDisplay(reportType, data) {
-            const resultsDiv = document.getElementById('reportResults');
-            if (!resultsDiv) return;
-            
-            switch (reportType) {
-                case 'maintenance-costs':
-                    const totalCost = data.reduce((sum, item) => sum + (item.cost || 0), 0);
-                    const avgCost = data.length > 0 ? totalCost / data.length : 0;
-                    
-                    resultsDiv.innerHTML = `
-                        <h3>Maintenance Cost Report</h3>
-                        <div class="dashboard-stats">
-                            <div class="stat-card">
-                                <h3>${totalCost.toFixed(2)}</h3>
-                                <p>Total Maintenance Cost</p>
+            const tbody = document.querySelector('#maintenanceTable tbody');-group">
+                                <label>Equipment ID *</label>
+                                <input type="text" id="equipmentId" required>
                             </div>
-                            <div class="stat-card">
-                                <h3>${avgCost.toFixed(2)}</h3>
-                                <p>Average Cost per Job</p>
+                            <div class="app-form-group">
+                                <label>Equipment Name *</label>
+                                <input type="text" id="equipmentName" required>
                             </div>
-                            <div class="stat-card">
-                                <h3>${data.length}</h3>
-                                <p>Total Maintenance Jobs</p>
+                            <div class="app-form-group">
+                                <label>Type *</label>
+                                <select id="equipmentType" required>
+                                    <option value="">Select Type</option>
+                                    <option value="Dump Trucks">Dump Trucks</option>
+                                    <option value="Trucks">Trucks</option>
+                                    <option value="Trailers">Trailers</option>
+                                    <option value="Paving">Paving</option>
+                                    <option value="Skids/Excavation">Skids/Excavation</option>
+                                    <option value="Rollers">Rollers</option>
+                                    <option value="Sealcoat">Sealcoat</option>
+                                    <option value="Crack Fill">Crack Fill</option>
+                                    <option value="Shop Equipment">Shop Equipment</option>
+                                    <option value="Small Engine">Small Engine</option>
+                                    <option value="Misc">Misc</option>
+                                </select>
+                            </div>
+                            <div class="app-form-group">
+                                <label>Make</label>
+                                <input type="text" id="equipmentMake">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Model</label>
+                                <input type="text" id="equipmentModel">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Year</label>
+                                <input type="number" id="equipmentYear" min="1900" max="2030">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Status *</label>
+                                <select id="equipmentStatus" required>
+                                    <option value="Active">Active</option>
+                                    <option value="Maintenance">Maintenance</option>
+                                    <option value="Repair">Repair</option>
+                                    <option value="DOT">DOT</option>
+                                    <option value="Inactive">Inactive</option>
+                                </select>
                             </div>
                         </div>
-                    `;
-                    break;
-                    
-                case 'equipment-status':
-                    const statusCounts = {};
-                    equipmentData.forEach(equipment => {
-                        const status = equipment.status || 'Unknown';
-                        statusCounts[status] = (statusCounts[status] || 0) + 1;
-                    });
-                    
-                    let statusReport = '<h3>Equipment Status Report</h3><div class="dashboard-stats">';
-                    for (const [status, count] of Object.entries(statusCounts)) {
-                        statusReport += `
-                            <div class="stat-card">
-                                <h3>${count}</h3>
-                                <p>${status} Equipment</p>
-                            </div>
-                        `;
-                    }
-                    statusReport += '</div>';
-                    resultsDiv.innerHTML = statusReport;
-                    break;
-                    
-                default:
-                    resultsDiv.innerHTML = '<p>Report generated successfully. More detailed reports coming soon!</p>';
-            }
-        }
+                    </div>
 
-        function showNotification(type, title, message) {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type} show`;
-            notification.innerHTML = `
-                <div class="notification-title">${title}</div>
-                <div class="notification-message">${message}</div>
-                <button class="notification-close" onclick="this.parentElement.remove()">&times;</button>
-            `;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    notification.remove();
-                }
-            }, 5000);
-        }
-    </script>
-</body>
-</html>
+                    <div class="form-section">
+                        <h3>Tire Specifications</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Front Axle Tire Size</label>
+                                <input type="text" id="frontTireSize" placeholder="e.g., 295/75R22.5">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Tag Axle 1 Tire Size</label>
+                                <input type="text" id="tagAxle1TireSize" placeholder="e.g., 295/75R22.5">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Tag Axle 2 Tire Size</label>
+                                <input type="text" id="tagAxle2TireSize" placeholder="e.g., 295/75R22.5">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Drive Axle 1 Tire Size</label>
+                                <input type="text" id="driveAxle1TireSize" placeholder="e.g., 11R22.5">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Drive Axle 2 Tire Size</label>
+                                <input type="text" id="driveAxle2TireSize" placeholder="e.g., 11R22.5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Engine & Filters</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Oil Filter Number</label>
+                                <input type="text" id="oilFilterNumber" placeholder="e.g., LF16035">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Oil Type</label>
+                                <input type="text" id="oilType" placeholder="e.g., 15W-40">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Oil Quantity (quarts)</label>
+                                <input type="number" id="oilQuantity" step="0.5" placeholder="e.g., 10">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Fuel Filter Number</label>
+                                <input type="text" id="fuelFilterNumber" placeholder="e.g., FF5320">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Air Filter Number</label>
+                                <input type="text" id="airFilterNumber" placeholder="e.g., AF25130M">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Transmission</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Transmission Filter Number</label>
+                                <input type="text" id="transFilterNumber" placeholder="e.g., TF15070">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Transmission Oil Type</label>
+                                <input type="text" id="transOilType" placeholder="e.g., Dexron VI">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Transmission Oil Quantity (quarts)</label>
+                                <input type="number" id="transOilQuantity" step="0.5" placeholder="e.g., 12">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Hydraulic System</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Hydraulic Filter Number</label>
+                                <input type="text" id="hydraulicFilterNumber" placeholder="e.g., HF35360">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Hydraulic Oil Type</label>
+                                <input type="text" id="hydraulicOilType" placeholder="e.g., AW 46">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Hydraulic Oil Quantity (gallons)</label>
+                                <input type="number" id="hydraulicOilQuantity" step="0.5" placeholder="e.g., 15">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Coolant System</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Coolant Type</label>
+                                <input type="text" id="coolantType" placeholder="e.g., Extended Life Coolant">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Coolant Quantity (gallons)</label>
+                                <input type="number" id="coolantQuantity" step="0.5" placeholder="e.g., 8">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Add Equipment</button>
+                </form>
+
+                <div class="search-filter">
+                    <input type="text" id="equipmentSearch" placeholder="Search equipment...">
+                    <select id="equipmentFilter">
+                        <option value="">All Types</option>
+                        <option value="Dump Trucks">Dump Trucks</option>
+                        <option value="Trucks">Trucks</option>
+                        <option value="Trailers">Trailers</option>
+                        <option value="Paving">Paving</option>
+                        <option value="Skids/Excavation">Skids/Excavation</option>
+                        <option value="Rollers">Rollers</option>
+                        <option value="Sealcoat">Sealcoat</option>
+                        <option value="Crack Fill">Crack Fill</option>
+                        <option value="Shop Equipment">Shop Equipment</option>
+                        <option value="Small Engine">Small Engine</option>
+                        <option value="Misc">Misc</option>
+                    </select>
+                    <button class="btn export-btn" onclick="exportData('equipment')">Export</button>
+                </div>
+
+                <table class="data-table" id="equipmentTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Make/Model</th>
+                            <th>Year</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="maintenance" class="tab-content">
+                <h2>Add Maintenance Record</h2>
+                <form id="maintenanceForm">
+                    <div class="form-grid">
+                        <div class="app-form-group">
+                            <label>Equipment *</label>
+                            <select id="maintenanceEquipment" required>
+                                <option value="">Select Equipment</option>
+                            </select>
+                        </div>
+                        <div class="app-form-group">
+                            <label>Maintenance Type *</label>
+                            <select id="maintenanceType" required>
+                                <option value="">Select Type</option>
+                                <option value="Oil Change">Oil Change</option>
+                                <option value="Tire Replacement">Tire Replacement</option>
+                                <option value="Brake Service">Brake Service</option>
+                                <option value="Engine Repair">Engine Repair</option>
+                                <option value="Transmission Service">Transmission Service</option>
+                                <option value="DOT Inspection">DOT Inspection</option>
+                                <option value="Preventive Maintenance">Preventive Maintenance</option>
+                                <option value="Emergency Repair">Emergency Repair</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="app-form-group">
+                            <label>Date Performed *</label>
+                            <input type="date" id="maintenanceDate" required>
+                        </div>
+                        <div class="app-form-group">
+                            <label>Cost ($)</label>
+                            <input type="number" id="maintenanceCost" step="0.01" min="0">
+                        </div>
+                        <div class="app-form

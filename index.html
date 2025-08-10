@@ -663,6 +663,14 @@
                         <h3>Basic Information</h3>
                         <div class="form-grid">
                             <div class="app-form-group">
+                            <label>Date Performed *</label>
+                            <input type="date" id="maintenanceDate" required>
+                        </div>
+                        <div class="app-form-group">
+                            <label>Cost ($)</label>
+                            <input type="number" id="maintenanceCost" step="0.01" min="0">
+                        </div>
+                        <div class="app-form-group">
                             <label>Technician/Shop</label>
                             <input type="text" id="maintenanceTechnician">
                         </div>
@@ -812,7 +820,7 @@
 
         function checkAuthStatus() {
             try {
-                const savedAuth = localStorage.getItem('fleetAuth');
+                const savedAuth = sessionStorage.getItem('fleetAuth');
                 if (savedAuth) {
                     const authData = JSON.parse(savedAuth);
                     currentCompany = authData.company;
@@ -849,15 +857,28 @@
         async function handleLogin(event) {
             event.preventDefault();
             
-            const companyCode = document.getElementById('companyCode').value;
-            const email = document.getElementById('loginEmail').value;
+            const companyCode = document.getElementById('companyCode').value.trim();
+            const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             
+            // Basic validation
+            if (!companyCode || !email || !password) {
+                showNotification('error', 'Login Failed', 'Please fill in all fields');
+                return;
+            }
+            
+            if (!email.includes('@')) {
+                showNotification('error', 'Login Failed', 'Please enter a valid email address');
+                return;
+            }
+            
             try {
+                // For demo purposes, accept any credentials
+                // In production, you would validate against Firebase Auth or another auth service
                 currentCompany = companyCode;
                 currentUser = email;
                 
-                localStorage.setItem('fleetAuth', JSON.stringify({
+                sessionStorage.setItem('fleetAuth', JSON.stringify({
                     company: currentCompany,
                     user: currentUser
                 }));
@@ -865,12 +886,12 @@
                 showMainApp();
             } catch (error) {
                 console.error('Login error:', error);
-                showNotification('error', 'Login Failed', 'Invalid credentials');
+                showNotification('error', 'Login Failed', 'An error occurred during login');
             }
         }
 
         window.logout = function() {
-            localStorage.removeItem('fleetAuth');
+            sessionStorage.removeItem('fleetAuth');
             currentCompany = null;
             currentUser = null;
             equipmentData = [];
@@ -959,35 +980,35 @@
             event.preventDefault();
             
             const equipmentItem = {
-                equipmentId: document.getElementById('equipmentId').value,
-                name: document.getElementById('equipmentName').value,
+                equipmentId: document.getElementById('equipmentId').value.trim(),
+                name: document.getElementById('equipmentName').value.trim(),
                 type: document.getElementById('equipmentType').value,
-                make: document.getElementById('equipmentMake').value || '',
-                model: document.getElementById('equipmentModel').value || '',
+                make: document.getElementById('equipmentMake').value.trim() || '',
+                model: document.getElementById('equipmentModel').value.trim() || '',
                 year: document.getElementById('equipmentYear').value || '',
                 status: document.getElementById('equipmentStatus').value,
                 // Tire specifications
-                frontTireSize: document.getElementById('frontTireSize').value || '',
-                tagAxle1TireSize: document.getElementById('tagAxle1TireSize').value || '',
-                tagAxle2TireSize: document.getElementById('tagAxle2TireSize').value || '',
-                driveAxle1TireSize: document.getElementById('driveAxle1TireSize').value || '',
-                driveAxle2TireSize: document.getElementById('driveAxle2TireSize').value || '',
+                frontTireSize: document.getElementById('frontTireSize').value.trim() || '',
+                tagAxle1TireSize: document.getElementById('tagAxle1TireSize').value.trim() || '',
+                tagAxle2TireSize: document.getElementById('tagAxle2TireSize').value.trim() || '',
+                driveAxle1TireSize: document.getElementById('driveAxle1TireSize').value.trim() || '',
+                driveAxle2TireSize: document.getElementById('driveAxle2TireSize').value.trim() || '',
                 // Engine & Filters
-                oilFilterNumber: document.getElementById('oilFilterNumber').value || '',
-                oilType: document.getElementById('oilType').value || '',
+                oilFilterNumber: document.getElementById('oilFilterNumber').value.trim() || '',
+                oilType: document.getElementById('oilType').value.trim() || '',
                 oilQuantity: document.getElementById('oilQuantity').value || '',
-                fuelFilterNumber: document.getElementById('fuelFilterNumber').value || '',
-                airFilterNumber: document.getElementById('airFilterNumber').value || '',
+                fuelFilterNumber: document.getElementById('fuelFilterNumber').value.trim() || '',
+                airFilterNumber: document.getElementById('airFilterNumber').value.trim() || '',
                 // Transmission
-                transFilterNumber: document.getElementById('transFilterNumber').value || '',
-                transOilType: document.getElementById('transOilType').value || '',
+                transFilterNumber: document.getElementById('transFilterNumber').value.trim() || '',
+                transOilType: document.getElementById('transOilType').value.trim() || '',
                 transOilQuantity: document.getElementById('transOilQuantity').value || '',
                 // Hydraulic System
-                hydraulicFilterNumber: document.getElementById('hydraulicFilterNumber').value || '',
-                hydraulicOilType: document.getElementById('hydraulicOilType').value || '',
+                hydraulicFilterNumber: document.getElementById('hydraulicFilterNumber').value.trim() || '',
+                hydraulicOilType: document.getElementById('hydraulicOilType').value.trim() || '',
                 hydraulicOilQuantity: document.getElementById('hydraulicOilQuantity').value || '',
                 // Coolant System
-                coolantType: document.getElementById('coolantType').value || '',
+                coolantType: document.getElementById('coolantType').value.trim() || '',
                 coolantQuantity: document.getElementById('coolantQuantity').value || '',
                 dateAdded: new Date().toISOString(),
                 addedBy: currentUser
@@ -1005,8 +1026,8 @@
                 type: document.getElementById('maintenanceType').value,
                 date: document.getElementById('maintenanceDate').value,
                 cost: parseFloat(document.getElementById('maintenanceCost').value) || 0,
-                technician: document.getElementById('maintenanceTechnician').value || '',
-                description: document.getElementById('maintenanceDescription').value || '',
+                technician: document.getElementById('maintenanceTechnician').value.trim() || '',
+                description: document.getElementById('maintenanceDescription').value.trim() || '',
                 dateAdded: new Date().toISOString(),
                 addedBy: currentUser
             };
@@ -1354,7 +1375,645 @@
         }
 
         function displayFilteredMaintenance(filteredData) {
-            const tbody = document.querySelector('#maintenanceTable tbody');-group">
+            const tbody = document.querySelector('#maintenanceTable tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            filteredData.forEach((maintenance) => {
+                const equipment = equipmentData.find(eq => eq.id === maintenance.equipmentId);
+                const equipmentName = equipment ? equipment.name : 'Unknown Equipment';
+                
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${new Date(maintenance.date).toLocaleDateString()}</td>
+                    <td>${equipmentName}</td>
+                    <td>${maintenance.type || ''}</td>
+                    <td>${(maintenance.cost || 0).toFixed(2)}</td>
+                    <td>${maintenance.technician || '-'}</td>
+                    <td>${maintenance.description || '-'}</td>
+                    <td>
+                        <button class="btn btn-danger" onclick="deleteMaintenance('${maintenance.id}')" style="padding: 5px 10px; font-size: 12px;">Delete</button>
+                    </td>
+                `;
+            });
+        }
+
+        // Export functionality
+        window.exportData = function(type) {
+            let data, filename;
+            
+            if (type === 'equipment') {
+                data = [
+                    ['Equipment ID', 'Name', 'Type', 'Make', 'Model', 'Year', 'Status', 'Date Added'],
+                    ...equipmentData.map(eq => [
+                        eq.equipmentId || '',
+                        eq.name || '',
+                        eq.type || '',
+                        eq.make || '',
+                        eq.model || '',
+                        eq.year || '',
+                        eq.status || '',
+                        new Date(eq.dateAdded).toLocaleDateString()
+                    ])
+                ];
+                filename = `equipment_${new Date().toISOString().split('T')[0]}.csv`;
+            } else if (type === 'maintenance') {
+                data = [
+                    ['Date', 'Equipment', 'Type', 'Cost', 'Technician', 'Description'],
+                    ...maintenanceData.map(m => {
+                        const equipment = equipmentData.find(eq => eq.id === m.equipmentId);
+                        return [
+                            new Date(m.date).toLocaleDateString(),
+                            equipment ? equipment.name : 'Unknown Equipment',
+                            m.type || '',
+                            (m.cost || 0).toFixed(2),
+                            m.technician || '',
+                            m.description || ''
+                        ];
+                    })
+                ];
+                filename = `maintenance_${new Date().toISOString().split('T')[0]}.csv`;
+            }
+            
+            const csv = data.map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Report generation
+        window.generateReport = function() {
+            const reportType = document.getElementById('reportType').value;
+            const dateFrom = document.getElementById('reportDateFrom').value;
+            const dateTo = document.getElementById('reportDateTo').value;
+            const resultsDiv = document.getElementById('reportResults');
+            
+            let reportData = [];
+            let reportTitle = '';
+            
+            switch (reportType) {
+                case 'maintenance-costs':
+                    reportTitle = 'Maintenance Costs Report';
+                    let filteredMaintenance = maintenanceData;
+                    
+                    if (dateFrom) {
+                        filteredMaintenance = filteredMaintenance.filter(m => m.date >= dateFrom);
+                    }
+                    if (dateTo) {
+                        filteredMaintenance = filteredMaintenance.filter(m => m.date <= dateTo);
+                    }
+                    
+                    const totalCost = filteredMaintenance.reduce((sum, m) => sum + (m.cost || 0), 0);
+                    const avgCost = filteredMaintenance.length > 0 ? totalCost / filteredMaintenance.length : 0;
+                    
+                    reportData = [
+                        ['Total Records', filteredMaintenance.length],
+                        ['Total Cost', `${totalCost.toFixed(2)}`],
+                        ['Average Cost', `${avgCost.toFixed(2)}`]
+                    ];
+                    break;
+                    
+                case 'equipment-status':
+                    reportTitle = 'Equipment Status Report';
+                    const statusCounts = {};
+                    equipmentData.forEach(eq => {
+                        const status = eq.status || 'Unknown';
+                        statusCounts[status] = (statusCounts[status] || 0) + 1;
+                    });
+                    
+                    reportData = Object.entries(statusCounts).map(([status, count]) => [status, count]);
+                    break;
+                    
+                case 'maintenance-schedule':
+                    reportTitle = 'Maintenance Schedule Report';
+                    const typeData = {};
+                    maintenanceData.forEach(m => {
+                        const type = m.type || 'Unknown';
+                        typeData[type] = (typeData[type] || 0) + 1;
+                    });
+                    
+                    reportData = Object.entries(typeData).map(([type, count]) => [type, count]);
+                    break;
+                    
+                case 'cost-analysis':
+                    reportTitle = 'Cost Analysis Report';
+                    const equipmentCosts = {};
+                    
+                    maintenanceData.forEach(m => {
+                        const equipment = equipmentData.find(eq => eq.id === m.equipmentId);
+                        const equipmentName = equipment ? equipment.name : 'Unknown Equipment';
+                        equipmentCosts[equipmentName] = (equipmentCosts[equipmentName] || 0) + (m.cost || 0);
+                    });
+                    
+                    reportData = Object.entries(equipmentCosts)
+                        .map(([name, cost]) => [name, `${cost.toFixed(2)}`])
+                        .sort((a, b) => parseFloat(b[1].replace('
+                                <label>Equipment ID *</label>
+                                <input type="text" id="equipmentId" required>
+                            </div>
+                            <div class="app-form-group">
+                                <label>Equipment Name *</label>
+                                <input type="text" id="equipmentName" required>
+                            </div>
+                            <div class="app-form-group">
+                                <label>Type *</label>
+                                <select id="equipmentType" required>
+                                    <option value="">Select Type</option>
+                                    <option value="Dump Trucks">Dump Trucks</option>
+                                    <option value="Trucks">Trucks</option>
+                                    <option value="Trailers">Trailers</option>
+                                    <option value="Paving">Paving</option>
+                                    <option value="Skids/Excavation">Skids/Excavation</option>
+                                    <option value="Rollers">Rollers</option>
+                                    <option value="Sealcoat">Sealcoat</option>
+                                    <option value="Crack Fill">Crack Fill</option>
+                                    <option value="Shop Equipment">Shop Equipment</option>
+                                    <option value="Small Engine">Small Engine</option>
+                                    <option value="Misc">Misc</option>
+                                </select>
+                            </div>
+                            <div class="app-form-group">
+                                <label>Make</label>
+                                <input type="text" id="equipmentMake">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Model</label>
+                                <input type="text" id="equipmentModel">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Year</label>
+                                <input type="number" id="equipmentYear" min="1900" max="2030">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Status *</label>
+                                <select id="equipmentStatus" required>
+                                    <option value="Active">Active</option>
+                                    <option value="Maintenance">Maintenance</option>
+                                    <option value="Repair">Repair</option>
+                                    <option value="DOT">DOT</option>
+                                    <option value="Inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Tire Specifications</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Front Axle Tire Size</label>
+                                <input type="text" id="frontTireSize" placeholder="e.g., 295/75R22.5">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Tag Axle 1 Tire Size</label>
+                                <input type="text" id="tagAxle1TireSize" placeholder="e.g., 295/75R22.5">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Tag Axle 2 Tire Size</label>
+                                <input type="text" id="tagAxle2TireSize" placeholder="e.g., 295/75R22.5">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Drive Axle 1 Tire Size</label>
+                                <input type="text" id="driveAxle1TireSize" placeholder="e.g., 11R22.5">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Drive Axle 2 Tire Size</label>
+                                <input type="text" id="driveAxle2TireSize" placeholder="e.g., 11R22.5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Engine & Filters</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Oil Filter Number</label>
+                                <input type="text" id="oilFilterNumber" placeholder="e.g., LF16035">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Oil Type</label>
+                                <input type="text" id="oilType" placeholder="e.g., 15W-40">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Oil Quantity (quarts)</label>
+                                <input type="number" id="oilQuantity" step="0.5" placeholder="e.g., 10">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Fuel Filter Number</label>
+                                <input type="text" id="fuelFilterNumber" placeholder="e.g., FF5320">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Air Filter Number</label>
+                                <input type="text" id="airFilterNumber" placeholder="e.g., AF25130M">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Transmission</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Transmission Filter Number</label>
+                                <input type="text" id="transFilterNumber" placeholder="e.g., TF15070">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Transmission Oil Type</label>
+                                <input type="text" id="transOilType" placeholder="e.g., Dexron VI">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Transmission Oil Quantity (quarts)</label>
+                                <input type="number" id="transOilQuantity" step="0.5" placeholder="e.g., 12">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Hydraulic System</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Hydraulic Filter Number</label>
+                                <input type="text" id="hydraulicFilterNumber" placeholder="e.g., HF35360">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Hydraulic Oil Type</label>
+                                <input type="text" id="hydraulicOilType" placeholder="e.g., AW 46">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Hydraulic Oil Quantity (gallons)</label>
+                                <input type="number" id="hydraulicOilQuantity" step="0.5" placeholder="e.g., 15">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Coolant System</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Coolant Type</label>
+                                <input type="text" id="coolantType" placeholder="e.g., Extended Life Coolant">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Coolant Quantity (gallons)</label>
+                                <input type="number" id="coolantQuantity" step="0.5" placeholder="e.g., 8">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Add Equipment</button>
+                </form>
+
+                <div class="search-filter">
+                    <input type="text" id="equipmentSearch" placeholder="Search equipment...">
+                    <select id="equipmentFilter">
+                        <option value="">All Types</option>
+                        <option value="Dump Trucks">Dump Trucks</option>
+                        <option value="Trucks">Trucks</option>
+                        <option value="Trailers">Trailers</option>
+                        <option value="Paving">Paving</option>
+                        <option value="Skids/Excavation">Skids/Excavation</option>
+                        <option value="Rollers">Rollers</option>
+                        <option value="Sealcoat">Sealcoat</option>
+                        <option value="Crack Fill">Crack Fill</option>
+                        <option value="Shop Equipment">Shop Equipment</option>
+                        <option value="Small Engine">Small Engine</option>
+                        <option value="Misc">Misc</option>
+                    </select>
+                    <button class="btn export-btn" onclick="exportData('equipment')">Export</button>
+                </div>
+
+                <table class="data-table" id="equipmentTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Make/Model</th>
+                            <th>Year</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="maintenance" class="tab-content">
+                <h2>Add Maintenance Record</h2>
+                <form id="maintenanceForm">
+                    <div class="form-grid">
+                        <div class="app-form-group">
+                            <label>Equipment *</label>
+                            <select id="maintenanceEquipment" required>
+                                <option value="">Select Equipment</option>
+                            </select>
+                        </div>
+                        <div class="app-form-group">
+                            <label>Maintenance Type *</label>
+                            <select id="maintenanceType" required>
+                                <option value="">Select Type</option>
+                                <option value="Oil Change">Oil Change</option>
+                                <option value="Tire Replacement">Tire Replacement</option>
+                                <option value="Brake Service">Brake Service</option>
+                                <option value="Engine Repair">Engine Repair</option>
+                                <option value="Transmission Service">Transmission Service</option>
+                                <option value="DOT Inspection">DOT Inspection</option>
+                                <option value="Preventive Maintenance">Preventive Maintenance</option>
+                                <option value="Emergency Repair">Emergency Repair</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="app-form-group">, '')) - parseFloat(a[1].replace('
+                                <label>Equipment ID *</label>
+                                <input type="text" id="equipmentId" required>
+                            </div>
+                            <div class="app-form-group">
+                                <label>Equipment Name *</label>
+                                <input type="text" id="equipmentName" required>
+                            </div>
+                            <div class="app-form-group">
+                                <label>Type *</label>
+                                <select id="equipmentType" required>
+                                    <option value="">Select Type</option>
+                                    <option value="Dump Trucks">Dump Trucks</option>
+                                    <option value="Trucks">Trucks</option>
+                                    <option value="Trailers">Trailers</option>
+                                    <option value="Paving">Paving</option>
+                                    <option value="Skids/Excavation">Skids/Excavation</option>
+                                    <option value="Rollers">Rollers</option>
+                                    <option value="Sealcoat">Sealcoat</option>
+                                    <option value="Crack Fill">Crack Fill</option>
+                                    <option value="Shop Equipment">Shop Equipment</option>
+                                    <option value="Small Engine">Small Engine</option>
+                                    <option value="Misc">Misc</option>
+                                </select>
+                            </div>
+                            <div class="app-form-group">
+                                <label>Make</label>
+                                <input type="text" id="equipmentMake">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Model</label>
+                                <input type="text" id="equipmentModel">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Year</label>
+                                <input type="number" id="equipmentYear" min="1900" max="2030">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Status *</label>
+                                <select id="equipmentStatus" required>
+                                    <option value="Active">Active</option>
+                                    <option value="Maintenance">Maintenance</option>
+                                    <option value="Repair">Repair</option>
+                                    <option value="DOT">DOT</option>
+                                    <option value="Inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Tire Specifications</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Front Axle Tire Size</label>
+                                <input type="text" id="frontTireSize" placeholder="e.g., 295/75R22.5">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Tag Axle 1 Tire Size</label>
+                                <input type="text" id="tagAxle1TireSize" placeholder="e.g., 295/75R22.5">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Tag Axle 2 Tire Size</label>
+                                <input type="text" id="tagAxle2TireSize" placeholder="e.g., 295/75R22.5">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Drive Axle 1 Tire Size</label>
+                                <input type="text" id="driveAxle1TireSize" placeholder="e.g., 11R22.5">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Drive Axle 2 Tire Size</label>
+                                <input type="text" id="driveAxle2TireSize" placeholder="e.g., 11R22.5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Engine & Filters</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Oil Filter Number</label>
+                                <input type="text" id="oilFilterNumber" placeholder="e.g., LF16035">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Oil Type</label>
+                                <input type="text" id="oilType" placeholder="e.g., 15W-40">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Oil Quantity (quarts)</label>
+                                <input type="number" id="oilQuantity" step="0.5" placeholder="e.g., 10">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Fuel Filter Number</label>
+                                <input type="text" id="fuelFilterNumber" placeholder="e.g., FF5320">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Air Filter Number</label>
+                                <input type="text" id="airFilterNumber" placeholder="e.g., AF25130M">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Transmission</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Transmission Filter Number</label>
+                                <input type="text" id="transFilterNumber" placeholder="e.g., TF15070">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Transmission Oil Type</label>
+                                <input type="text" id="transOilType" placeholder="e.g., Dexron VI">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Transmission Oil Quantity (quarts)</label>
+                                <input type="number" id="transOilQuantity" step="0.5" placeholder="e.g., 12">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Hydraulic System</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Hydraulic Filter Number</label>
+                                <input type="text" id="hydraulicFilterNumber" placeholder="e.g., HF35360">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Hydraulic Oil Type</label>
+                                <input type="text" id="hydraulicOilType" placeholder="e.g., AW 46">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Hydraulic Oil Quantity (gallons)</label>
+                                <input type="number" id="hydraulicOilQuantity" step="0.5" placeholder="e.g., 15">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Coolant System</h3>
+                        <div class="form-grid">
+                            <div class="app-form-group">
+                                <label>Coolant Type</label>
+                                <input type="text" id="coolantType" placeholder="e.g., Extended Life Coolant">
+                            </div>
+                            <div class="app-form-group">
+                                <label>Coolant Quantity (gallons)</label>
+                                <input type="number" id="coolantQuantity" step="0.5" placeholder="e.g., 8">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Add Equipment</button>
+                </form>
+
+                <div class="search-filter">
+                    <input type="text" id="equipmentSearch" placeholder="Search equipment...">
+                    <select id="equipmentFilter">
+                        <option value="">All Types</option>
+                        <option value="Dump Trucks">Dump Trucks</option>
+                        <option value="Trucks">Trucks</option>
+                        <option value="Trailers">Trailers</option>
+                        <option value="Paving">Paving</option>
+                        <option value="Skids/Excavation">Skids/Excavation</option>
+                        <option value="Rollers">Rollers</option>
+                        <option value="Sealcoat">Sealcoat</option>
+                        <option value="Crack Fill">Crack Fill</option>
+                        <option value="Shop Equipment">Shop Equipment</option>
+                        <option value="Small Engine">Small Engine</option>
+                        <option value="Misc">Misc</option>
+                    </select>
+                    <button class="btn export-btn" onclick="exportData('equipment')">Export</button>
+                </div>
+
+                <table class="data-table" id="equipmentTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Make/Model</th>
+                            <th>Year</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="maintenance" class="tab-content">
+                <h2>Add Maintenance Record</h2>
+                <form id="maintenanceForm">
+                    <div class="form-grid">
+                        <div class="app-form-group">
+                            <label>Equipment *</label>
+                            <select id="maintenanceEquipment" required>
+                                <option value="">Select Equipment</option>
+                            </select>
+                        </div>
+                        <div class="app-form-group">
+                            <label>Maintenance Type *</label>
+                            <select id="maintenanceType" required>
+                                <option value="">Select Type</option>
+                                <option value="Oil Change">Oil Change</option>
+                                <option value="Tire Replacement">Tire Replacement</option>
+                                <option value="Brake Service">Brake Service</option>
+                                <option value="Engine Repair">Engine Repair</option>
+                                <option value="Transmission Service">Transmission Service</option>
+                                <option value="DOT Inspection">DOT Inspection</option>
+                                <option value="Preventive Maintenance">Preventive Maintenance</option>
+                                <option value="Emergency Repair">Emergency Repair</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="app-form-group">, '')));
+                    break;
+            }
+            
+            let reportHtml = `
+                <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-top: 20px;">
+                    <h3 style="color: #2E86AB; margin-bottom: 20px;">${reportTitle}</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            reportData.forEach(([category, value]) => {
+                reportHtml += `
+                    <tr>
+                        <td>${category}</td>
+                        <td>${value}</td>
+                    </tr>
+                `;
+            });
+            
+            reportHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = reportHtml;
+        }
+
+        // Notification system
+        function showNotification(type, title, message) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <button class="notification-close" onclick="this.parentElement.remove()">&times;</button>
+                <div class="notification-title">${title}</div>
+                <div class="notification-message">${message}</div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 5000);
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('partsModal');
+            if (event.target === modal) {
+                closePartsModal();
+            }
+        });
+
+    </script>
+</body>
+</html>
                                 <label>Equipment ID *</label>
                                 <input type="text" id="equipmentId" required>
                             </div>
@@ -1570,11 +2229,3 @@
                             </select>
                         </div>
                         <div class="app-form-group">
-                            <label>Date Performed *</label>
-                            <input type="date" id="maintenanceDate" required>
-                        </div>
-                        <div class="app-form-group">
-                            <label>Cost ($)</label>
-                            <input type="number" id="maintenanceCost" step="0.01" min="0">
-                        </div>
-                        <div class="app-form

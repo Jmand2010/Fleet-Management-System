@@ -143,12 +143,12 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin: 5px;
-            width: 100%;
         }
 
         .btn-primary {
             background: linear-gradient(135deg, #2E86AB, #A23B72);
             color: white;
+            width: 100%;
         }
 
         .btn-primary:hover {
@@ -881,3 +881,962 @@
                             <label>Date Performed *</label>
                             <input type="date" id="maintenanceDate" required>
                         </div>
+                        <div class="app-form-group">
+                            <label>Cost ($)</label>
+                            <input type="number" id="maintenanceCost" step="0.01" min="0">
+                        </div>
+                        <div class="app-form-group">
+                            <label>Technician/Shop</label>
+                            <input type="text" id="maintenanceTechnician">
+                        </div>
+                        <div class="app-form-group" style="grid-column: 1 / -1;">
+                            <label>Description/Notes</label>
+                            <textarea id="maintenanceDescription" rows="3"></textarea>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Add Maintenance Record</button>
+                </form>
+
+                <div class="search-filter">
+                    <input type="text" id="maintenanceSearch" placeholder="Search maintenance records...">
+                    <select id="maintenanceFilterEquipment">
+                        <option value="">All Equipment</option>
+                    </select>
+                    <select id="maintenanceFilterType">
+                        <option value="">All Types</option>
+                        <option value="Oil Change">Oil Change</option>
+                        <option value="Tire Replacement">Tire Replacement</option>
+                        <option value="Brake Service">Brake Service</option>
+                        <option value="Engine Repair">Engine Repair</option>
+                        <option value="Transmission Service">Transmission Service</option>
+                        <option value="DOT Inspection">DOT Inspection</option>
+                        <option value="Preventive Maintenance">Preventive Maintenance</option>
+                        <option value="Emergency Repair">Emergency Repair</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <button class="btn export-btn" onclick="exportData('maintenance')">Export</button>
+                </div>
+
+                <table class="data-table" id="maintenanceTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Equipment</th>
+                            <th>Type</th>
+                            <th>Cost</th>
+                            <th>Technician</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="reports" class="tab-content">
+                <h2>Fleet Reports</h2>
+                
+                <div class="form-grid">
+                    <div class="app-form-group">
+                        <label>Report Type</label>
+                        <select id="reportType">
+                            <option value="maintenance-costs">Maintenance Costs</option>
+                            <option value="equipment-status">Equipment Status</option>
+                            <option value="maintenance-schedule">Maintenance Schedule</option>
+                            <option value="cost-analysis">Cost Analysis</option>
+                        </select>
+                    </div>
+                    <div class="app-form-group">
+                        <label>Date Range From</label>
+                        <input type="date" id="reportDateFrom">
+                    </div>
+                    <div class="app-form-group">
+                        <label>Date Range To</label>
+                        <input type="date" id="reportDateTo">
+                    </div>
+                    <div class="app-form-group">
+                        <button class="btn btn-primary" onclick="generateReport()">Generate Report</button>
+                    </div>
+                </div>
+
+                <div id="reportResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+        import { getFirestore, collection, doc, addDoc, getDocs, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDbmgbQ3_nOA1M4aZsdEEqXt3u7aGSGNaY",
+            authDomain: "fleet-management-system-ddf64.firebaseapp.com",
+            projectId: "fleet-management-system-ddf64",
+            storageBucket: "fleet-management-system-ddf64.firebasestorage.app",
+            messagingSenderId: "243109983757",
+            appId: "1:243109983757:web:ea8cc76b897973fee4c744"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Global variables
+        let currentCompany = null;
+        let currentUser = null;
+        let equipmentData = [];
+        let maintenanceData = [];
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            
+            const today = new Date().toISOString().split('T')[0];
+            const maintenanceDateInput = document.getElementById('maintenanceDate');
+            if (maintenanceDateInput) {
+                maintenanceDateInput.value = today;
+            }
+            
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            const loginForm = document.getElementById('loginForm');
+            const equipmentForm = document.getElementById('equipmentForm');
+            const maintenanceForm = document.getElementById('maintenanceForm');
+            
+            if (loginForm) {
+                loginForm.addEventListener('submit', handleLogin);
+            }
+            
+            if (equipmentForm) {
+                equipmentForm.addEventListener('submit', addEquipment);
+            }
+            
+            if (maintenanceForm) {
+                maintenanceForm.addEventListener('submit', addMaintenance);
+            }
+            
+            const equipmentSearch = document.getElementById('equipmentSearch');
+            const equipmentFilter = document.getElementById('equipmentFilter');
+            const maintenanceSearch = document.getElementById('maintenanceSearch');
+            const maintenanceFilterEquipment = document.getElementById('maintenanceFilterEquipment');
+            const maintenanceFilterType = document.getElementById('maintenanceFilterType');
+            
+            if (equipmentSearch) equipmentSearch.addEventListener('input', filterEquipment);
+            if (equipmentFilter) equipmentFilter.addEventListener('change', filterEquipment);
+            if (maintenanceSearch) maintenanceSearch.addEventListener('input', filterMaintenance);
+            if (maintenanceFilterEquipment) maintenanceFilterEquipment.addEventListener('change', filterMaintenance);
+            if (maintenanceFilterType) maintenanceFilterType.addEventListener('change', filterMaintenance);
+        }
+
+        function checkAuthStatus() {
+            try {
+                const savedAuth = sessionStorage.getItem('fleetAuth');
+                if (savedAuth) {
+                    const authData = JSON.parse(savedAuth);
+                    currentCompany = authData.company;
+                    currentUser = authData.user;
+                    showMainApp();
+                } else {
+                    showLoginPage();
+                }
+            } catch (error) {
+                console.error('Error checking auth status:', error);
+                showLoginPage();
+            }
+        }
+
+        function showLoginPage() {
+            document.getElementById('loginPage').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+        }
+
+        function showMainApp() {
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            
+            document.getElementById('companyName').textContent = currentCompany;
+            document.getElementById('userName').textContent = currentUser;
+            
+            loadData();
+            updateDashboard();
+            updateEquipmentDropdowns();
+            
+            showNotification('success', 'Welcome!', `Welcome back to ${currentCompany}!`);
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const companyCode = document.getElementById('companyCode').value.trim();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            
+            // Basic validation
+            if (!companyCode || !email || !password) {
+                showNotification('error', 'Login Failed', 'Please fill in all fields');
+                return;
+            }
+            
+            if (!email.includes('@')) {
+                showNotification('error', 'Login Failed', 'Please enter a valid email address');
+                return;
+            }
+            
+            try {
+                // For demo purposes, accept any credentials
+                // In production, you would validate against Firebase Auth or another auth service
+                currentCompany = companyCode;
+                currentUser = email;
+                
+                sessionStorage.setItem('fleetAuth', JSON.stringify({
+                    company: currentCompany,
+                    user: currentUser
+                }));
+                
+                showMainApp();
+            } catch (error) {
+                console.error('Login error:', error);
+                showNotification('error', 'Login Failed', 'An error occurred during login');
+            }
+        }
+
+        window.logout = function() {
+            sessionStorage.removeItem('fleetAuth');
+            currentCompany = null;
+            currentUser = null;
+            equipmentData = [];
+            maintenanceData = [];
+            showLoginPage();
+        }
+
+        async function loadData() {
+            try {
+                const equipmentQuery = query(
+                    collection(db, 'companies', currentCompany, 'equipment')
+                );
+                const equipmentSnapshot = await getDocs(equipmentQuery);
+                
+                equipmentData = [];
+                equipmentSnapshot.forEach(doc => {
+                    equipmentData.push({ id: doc.id, ...doc.data() });
+                });
+                
+                const maintenanceQuery = query(
+                    collection(db, 'companies', currentCompany, 'maintenance'),
+                    orderBy('date', 'desc')
+                );
+                const maintenanceSnapshot = await getDocs(maintenanceQuery);
+                
+                maintenanceData = [];
+                maintenanceSnapshot.forEach(doc => {
+                    maintenanceData.push({ id: doc.id, ...doc.data() });
+                });
+                
+                displayEquipment();
+                displayMaintenance();
+                updateDashboard();
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showNotification('error', 'Error', 'Failed to load data from database');
+            }
+        }
+
+        async function saveEquipmentToFirebase(equipmentItem) {
+            try {
+                await addDoc(collection(db, 'companies', currentCompany, 'equipment'), equipmentItem);
+                showNotification('success', 'Success', 'Equipment added successfully');
+                loadData();
+            } catch (error) {
+                console.error('Error saving equipment:', error);
+                showNotification('error', 'Error', 'Failed to save equipment');
+            }
+        }
+
+        async function saveMaintenanceToFirebase(maintenanceItem) {
+            try {
+                await addDoc(collection(db, 'companies', currentCompany, 'maintenance'), maintenanceItem);
+                showNotification('success', 'Success', 'Maintenance record added successfully');
+                loadData();
+            } catch (error) {
+                console.error('Error saving maintenance:', error);
+                showNotification('error', 'Error', 'Failed to save maintenance record');
+            }
+        }
+
+        async function deleteEquipmentFromFirebase(equipmentId) {
+            try {
+                await deleteDoc(doc(db, 'companies', currentCompany, 'equipment', equipmentId));
+                showNotification('success', 'Success', 'Equipment deleted successfully');
+                loadData();
+            } catch (error) {
+                console.error('Error deleting equipment:', error);
+                showNotification('error', 'Error', 'Failed to delete equipment');
+            }
+        }
+
+        async function deleteMaintenanceFromFirebase(maintenanceId) {
+            try {
+                await deleteDoc(doc(db, 'companies', currentCompany, 'maintenance', maintenanceId));
+                showNotification('success', 'Success', 'Maintenance record deleted successfully');
+                loadData();
+            } catch (error) {
+                console.error('Error deleting maintenance:', error);
+                showNotification('error', 'Error', 'Failed to delete maintenance record');
+            }
+        }
+
+        async function addEquipment(event) {
+            event.preventDefault();
+            
+            const equipmentItem = {
+                equipmentId: document.getElementById('equipmentId').value.trim(),
+                name: document.getElementById('equipmentName').value.trim(),
+                type: document.getElementById('equipmentType').value,
+                make: document.getElementById('equipmentMake').value.trim() || '',
+                model: document.getElementById('equipmentModel').value.trim() || '',
+                year: document.getElementById('equipmentYear').value || '',
+                status: document.getElementById('equipmentStatus').value,
+                // Tire specifications
+                frontTireSize: document.getElementById('frontTireSize').value.trim() || '',
+                tagAxle1TireSize: document.getElementById('tagAxle1TireSize').value.trim() || '',
+                tagAxle2TireSize: document.getElementById('tagAxle2TireSize').value.trim() || '',
+                driveAxle1TireSize: document.getElementById('driveAxle1TireSize').value.trim() || '',
+                driveAxle2TireSize: document.getElementById('driveAxle2TireSize').value.trim() || '',
+                // Engine & Filters
+                oilFilterNumber: document.getElementById('oilFilterNumber').value.trim() || '',
+                oilType: document.getElementById('oilType').value.trim() || '',
+                oilQuantity: document.getElementById('oilQuantity').value || '',
+                fuelFilterNumber: document.getElementById('fuelFilterNumber').value.trim() || '',
+                airFilterNumber: document.getElementById('airFilterNumber').value.trim() || '',
+                // Transmission
+                transFilterNumber: document.getElementById('transFilterNumber').value.trim() || '',
+                transOilType: document.getElementById('transOilType').value.trim() || '',
+                transOilQuantity: document.getElementById('transOilQuantity').value || '',
+                // Hydraulic System
+                hydraulicFilterNumber: document.getElementById('hydraulicFilterNumber').value.trim() || '',
+                hydraulicOilType: document.getElementById('hydraulicOilType').value.trim() || '',
+                hydraulicOilQuantity: document.getElementById('hydraulicOilQuantity').value || '',
+                // Coolant System
+                coolantType: document.getElementById('coolantType').value.trim() || '',
+                coolantQuantity: document.getElementById('coolantQuantity').value || '',
+                dateAdded: new Date().toISOString(),
+                addedBy: currentUser
+            };
+            
+            await saveEquipmentToFirebase(equipmentItem);
+            document.getElementById('equipmentForm').reset();
+        }
+
+        async function addMaintenance(event) {
+            event.preventDefault();
+            
+            const maintenanceItem = {
+                equipmentId: document.getElementById('maintenanceEquipment').value,
+                type: document.getElementById('maintenanceType').value,
+                date: document.getElementById('maintenanceDate').value,
+                cost: parseFloat(document.getElementById('maintenanceCost').value) || 0,
+                technician: document.getElementById('maintenanceTechnician').value.trim() || '',
+                description: document.getElementById('maintenanceDescription').value.trim() || '',
+                dateAdded: new Date().toISOString(),
+                addedBy: currentUser
+            };
+            
+            await saveMaintenanceToFirebase(maintenanceItem);
+            
+            document.getElementById('maintenanceForm').reset();
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('maintenanceDate').value = today;
+        }
+
+        function displayEquipment() {
+            const tbody = document.querySelector('#equipmentTable tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            equipmentData.forEach((equipment) => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${equipment.equipmentId || ''}</td>
+                    <td>${equipment.name || ''}</td>
+                    <td>${equipment.type || ''}</td>
+                    <td>${(equipment.make || '') + ' ' + (equipment.model || '')}</td>
+                    <td>${equipment.year || '-'}</td>
+                    <td><span class="status ${(equipment.status || '').toLowerCase()}">${equipment.status || ''}</span></td>
+                    <td>
+                        <button class="btn btn-info" onclick="showPartsModal('${equipment.id}')" style="padding: 5px 10px; font-size: 12px; margin-right: 5px;">Parts/Fluids</button>
+                        <button class="btn btn-success" onclick="exportEquipmentMaintenance('${equipment.id}')" style="padding: 5px 10px; font-size: 12px; margin-right: 5px;">Export Records</button>
+                        <button class="btn btn-danger" onclick="deleteEquipment('${equipment.id}')" style="padding: 5px 10px; font-size: 12px;">Delete</button>
+                    </td>
+                `;
+            });
+        }
+
+        function displayMaintenance() {
+            const tbody = document.querySelector('#maintenanceTable tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            maintenanceData.forEach((maintenance) => {
+                const equipment = equipmentData.find(eq => eq.id === maintenance.equipmentId);
+                const equipmentName = equipment ? equipment.name : 'Unknown Equipment';
+                
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${new Date(maintenance.date).toLocaleDateString()}</td>
+                    <td>${equipmentName}</td>
+                    <td>${maintenance.type || ''}</td>
+                    <td>${(maintenance.cost || 0).toFixed(2)}</td>
+                    <td>${maintenance.technician || '-'}</td>
+                    <td>${maintenance.description || '-'}</td>
+                    <td>
+                        <button class="btn btn-danger" onclick="deleteMaintenance('${maintenance.id}')" style="padding: 5px 10px; font-size: 12px;">Delete</button>
+                    </td>
+                `;
+            });
+            
+            updateRecentMaintenance();
+        }
+
+        function updateRecentMaintenance() {
+            const tbody = document.querySelector('#recentMaintenanceTable tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            const recentMaintenance = maintenanceData.slice(0, 5);
+            
+            recentMaintenance.forEach(maintenance => {
+                const equipment = equipmentData.find(eq => eq.id === maintenance.equipmentId);
+                const equipmentName = equipment ? equipment.name : 'Unknown Equipment';
+                
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${equipmentName}</td>
+                    <td>${maintenance.type || ''}</td>
+                    <td>${new Date(maintenance.date).toLocaleDateString()}</td>
+                    <td>${(maintenance.cost || 0).toFixed(2)}</td>
+                    <td><span class="status active">Completed</span></td>
+                `;
+            });
+        }
+
+        // New function to export maintenance records for specific equipment
+        window.exportEquipmentMaintenance = function(equipmentId) {
+            const equipment = equipmentData.find(eq => eq.id === equipmentId);
+            if (!equipment) return;
+
+            const equipmentMaintenanceData = maintenanceData.filter(m => m.equipmentId === equipmentId);
+            
+            if (equipmentMaintenanceData.length === 0) {
+                showNotification('error', 'No Records', 'No maintenance records found for this equipment');
+                return;
+            }
+
+            const csvData = [
+                ['Date', 'Equipment', 'Type', 'Cost', 'Technician', 'Description', 'Added By', 'Date Added'],
+                ...equipmentMaintenanceData.map(m => [
+                    new Date(m.date).toLocaleDateString(),
+                    equipment.name,
+                    m.type || '',
+                    (m.cost || 0).toFixed(2),
+                    m.technician || '',
+                    m.description || '',
+                    m.addedBy || '',
+                    new Date(m.dateAdded).toLocaleDateString()
+                ])
+            ];
+
+            const csv = csvData.map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${equipment.name}_maintenance_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            showNotification('success', 'Export Complete', `Maintenance records for ${equipment.name} exported successfully`);
+        }
+
+        window.deleteEquipment = async function(equipmentId) {
+            if (confirm('Are you sure you want to delete this equipment?')) {
+                await deleteEquipmentFromFirebase(equipmentId);
+            }
+        }
+
+        window.deleteMaintenance = async function(maintenanceId) {
+            if (confirm('Are you sure you want to delete this maintenance record?')) {
+                await deleteMaintenanceFromFirebase(maintenanceId);
+            }
+        }
+
+        function updateDashboard() {
+            document.getElementById('totalEquipment').textContent = equipmentData.length;
+            document.getElementById('activeEquipment').textContent = equipmentData.filter(eq => eq.status === 'Active').length;
+            document.getElementById('maintenanceDue').textContent = equipmentData.filter(eq => eq.status === 'Maintenance').length;
+            document.getElementById('totalMaintenanceRecords').textContent = maintenanceData.length;
+        }
+
+        function updateEquipmentDropdowns() {
+            const maintenanceEquipmentSelect = document.getElementById('maintenanceEquipment');
+            const maintenanceFilterEquipment = document.getElementById('maintenanceFilterEquipment');
+            
+            if (maintenanceEquipmentSelect) {
+                maintenanceEquipmentSelect.innerHTML = '<option value="">Select Equipment</option>';
+                equipmentData.forEach(equipment => {
+                    const option = document.createElement('option');
+                    option.value = equipment.id;
+                    option.textContent = equipment.name;
+                    maintenanceEquipmentSelect.appendChild(option);
+                });
+            }
+            
+            if (maintenanceFilterEquipment) {
+                maintenanceFilterEquipment.innerHTML = '<option value="">All Equipment</option>';
+                equipmentData.forEach(equipment => {
+                    const option = document.createElement('option');
+                    option.value = equipment.id;
+                    option.textContent = equipment.name;
+                    maintenanceFilterEquipment.appendChild(option);
+                });
+            }
+        }
+
+        window.showPartsModal = function(equipmentId) {
+            const equipment = equipmentData.find(eq => eq.id === equipmentId);
+            if (!equipment) return;
+
+            document.getElementById('partsModalTitle').textContent = `Parts & Fluids - ${equipment.name}`;
+            
+            const modalBody = document.getElementById('partsModalBody');
+            modalBody.innerHTML = `
+                <div class="parts-section">
+                    <h3>🛞 Tire Specifications</h3>
+                    <div class="parts-grid">
+                        <div class="part-item">
+                            <strong>Front Axle:</strong> ${equipment.frontTireSize || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Tag Axle 1:</strong> ${equipment.tagAxle1TireSize || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Tag Axle 2:</strong> ${equipment.tagAxle2TireSize || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Drive Axle 1:</strong> ${equipment.driveAxle1TireSize || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Drive Axle 2:</strong> ${equipment.driveAxle2TireSize || 'Not specified'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="parts-section">
+                    <h3>🔧 Engine & Filters</h3>
+                    <div class="parts-grid">
+                        <div class="part-item">
+                            <strong>Oil Filter:</strong> ${equipment.oilFilterNumber || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Oil Type:</strong> ${equipment.oilType || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Oil Quantity:</strong> ${equipment.oilQuantity ? equipment.oilQuantity + ' quarts' : 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Fuel Filter:</strong> ${equipment.fuelFilterNumber || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Air Filter:</strong> ${equipment.airFilterNumber || 'Not specified'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="parts-section">
+                    <h3>⚙️ Transmission</h3>
+                    <div class="parts-grid">
+                        <div class="part-item">
+                            <strong>Transmission Filter:</strong> ${equipment.transFilterNumber || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Trans Oil Type:</strong> ${equipment.transOilType || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Trans Oil Quantity:</strong> ${equipment.transOilQuantity ? equipment.transOilQuantity + ' quarts' : 'Not specified'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="parts-section">
+                    <h3>🔩 Hydraulic System</h3>
+                    <div class="parts-grid">
+                        <div class="part-item">
+                            <strong>Hydraulic Filter:</strong> ${equipment.hydraulicFilterNumber || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Hydraulic Oil Type:</strong> ${equipment.hydraulicOilType || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Hydraulic Oil Quantity:</strong> ${equipment.hydraulicOilQuantity ? equipment.hydraulicOilQuantity + ' gallons' : 'Not specified'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="parts-section">
+                    <h3>❄️ Coolant System</h3>
+                    <div class="parts-grid">
+                        <div class="part-item">
+                            <strong>Coolant Type:</strong> ${equipment.coolantType || 'Not specified'}
+                        </div>
+                        <div class="part-item">
+                            <strong>Coolant Quantity:</strong> ${equipment.coolantQuantity ? equipment.coolantQuantity + ' gallons' : 'Not specified'}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; text-align: center;">
+                    <button class="btn btn-success" onclick="exportEquipmentParts('${equipmentId}')">Export Parts List</button>
+                    <button class="btn btn-info" onclick="exportEquipmentMaintenance('${equipmentId}')">Export Maintenance Records</button>
+                </div>
+            `;
+
+            document.getElementById('partsModal').classList.add('show');
+        }
+
+        window.closePartsModal = function() {
+            document.getElementById('partsModal').classList.remove('show');
+        }
+
+        window.exportEquipmentParts = function(equipmentId) {
+            const equipment = equipmentData.find(eq => eq.id === equipmentId);
+            if (!equipment) return;
+
+            const partsData = [
+                ['Category', 'Item', 'Specification/Part Number', 'Quantity'],
+                ['Basic Info', 'Equipment ID', equipment.equipmentId || '', ''],
+                ['Basic Info', 'Name', equipment.name || '', ''],
+                ['Basic Info', 'Make/Model', `${equipment.make || ''} ${equipment.model || ''}`.trim(), ''],
+                ['Basic Info', 'Year', equipment.year || '', ''],
+                ['Tires', 'Front Axle', equipment.frontTireSize || '', '2'],
+                ['Tires', 'Tag Axle 1', equipment.tagAxle1TireSize || '', '2'],
+                ['Tires', 'Tag Axle 2', equipment.tagAxle2TireSize || '', '2'],
+                ['Tires', 'Drive Axle 1', equipment.driveAxle1TireSize || '', '4'],
+                ['Tires', 'Drive Axle 2', equipment.driveAxle2TireSize || '', '4'],
+                ['Engine', 'Oil Filter', equipment.oilFilterNumber || '', '1'],
+                ['Engine', 'Oil Type', equipment.oilType || '', equipment.oilQuantity || ''],
+                ['Engine', 'Fuel Filter', equipment.fuelFilterNumber || '', '1'],
+                ['Engine', 'Air Filter', equipment.airFilterNumber || '', '1'],
+                ['Transmission', 'Trans Filter', equipment.transFilterNumber || '', '1'],
+                ['Transmission', 'Trans Oil Type', equipment.transOilType || '', equipment.transOilQuantity || ''],
+                ['Hydraulics', 'Hydraulic Filter', equipment.hydraulicFilterNumber || '', '1'],
+                ['Hydraulics', 'Hydraulic Oil Type', equipment.hydraulicOilType || '', equipment.hydraulicOilQuantity || ''],
+                ['Coolant', 'Coolant Type', equipment.coolantType || '', equipment.coolantQuantity || '']
+            ];
+
+            let csv = partsData.map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${equipment.name}_parts_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        window.showTab = function(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function filterEquipment() {
+            const searchTerm = (document.getElementById('equipmentSearch').value || '').toLowerCase();
+            const filterType = document.getElementById('equipmentFilter').value;
+            
+            const filteredData = equipmentData.filter(equipment => {
+                const matchesSearch = (equipment.name || '').toLowerCase().includes(searchTerm) ||
+                                    (equipment.equipmentId || '').toLowerCase().includes(searchTerm) ||
+                                    (equipment.make || '').toLowerCase().includes(searchTerm) ||
+                                    (equipment.model || '').toLowerCase().includes(searchTerm);
+                
+                const matchesFilter = !filterType || equipment.type === filterType;
+                
+                return matchesSearch && matchesFilter;
+            });
+            
+            displayFilteredEquipment(filteredData);
+        }
+
+        function displayFilteredEquipment(filteredData) {
+            const tbody = document.querySelector('#equipmentTable tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            filteredData.forEach((equipment) => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${equipment.equipmentId || ''}</td>
+                    <td>${equipment.name || ''}</td>
+                    <td>${equipment.type || ''}</td>
+                    <td>${(equipment.make || '') + ' ' + (equipment.model || '')}</td>
+                    <td>${equipment.year || '-'}</td>
+                    <td><span class="status ${(equipment.status || '').toLowerCase()}">${equipment.status || ''}</span></td>
+                    <td>
+                        <button class="btn btn-info" onclick="showPartsModal('${equipment.id}')" style="padding: 5px 10px; font-size: 12px; margin-right: 5px;">Parts/Fluids</button>
+                        <button class="btn btn-success" onclick="exportEquipmentMaintenance('${equipment.id}')" style="padding: 5px 10px; font-size: 12px; margin-right: 5px;">Export Records</button>
+                        <button class="btn btn-danger" onclick="deleteEquipment('${equipment.id}')" style="padding: 5px 10px; font-size: 12px;">Delete</button>
+                    </td>
+                `;
+            });
+        }
+
+        function filterMaintenance() {
+            const searchTerm = (document.getElementById('maintenanceSearch').value || '').toLowerCase();
+            const filterEquipment = document.getElementById('maintenanceFilterEquipment').value;
+            const filterType = document.getElementById('maintenanceFilterType').value;
+            
+            const filteredData = maintenanceData.filter(maintenance => {
+                const equipment = equipmentData.find(eq => eq.id === maintenance.equipmentId);
+                const equipmentName = equipment ? (equipment.name || '') : '';
+                
+                const matchesSearch = equipmentName.toLowerCase().includes(searchTerm) ||
+                                    (maintenance.type || '').toLowerCase().includes(searchTerm) ||
+                                    (maintenance.technician || '').toLowerCase().includes(searchTerm) ||
+                                    (maintenance.description || '').toLowerCase().includes(searchTerm);
+                
+                const matchesEquipment = !filterEquipment || maintenance.equipmentId === filterEquipment;
+                const matchesType = !filterType || maintenance.type === filterType;
+                
+                return matchesSearch && matchesEquipment && matchesType;
+            });
+            
+            displayFilteredMaintenance(filteredData);
+        }
+
+        function displayFilteredMaintenance(filteredData) {
+            const tbody = document.querySelector('#maintenanceTable tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            filteredData.forEach((maintenance) => {
+                const equipment = equipmentData.find(eq => eq.id === maintenance.equipmentId);
+                const equipmentName = equipment ? equipment.name : 'Unknown Equipment';
+                
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${new Date(maintenance.date).toLocaleDateString()}</td>
+                    <td>${equipmentName}</td>
+                    <td>${maintenance.type || ''}</td>
+                    <td>${(maintenance.cost || 0).toFixed(2)}</td>
+                    <td>${maintenance.technician || '-'}</td>
+                    <td>${maintenance.description || '-'}</td>
+                    <td>
+                        <button class="btn btn-danger" onclick="deleteMaintenance('${maintenance.id}')" style="padding: 5px 10px; font-size: 12px;">Delete</button>
+                    </td>
+                `;
+            });
+        }
+
+        // Export functionality
+        window.exportData = function(type) {
+            let data, filename;
+            
+            if (type === 'equipment') {
+                data = [
+                    ['Equipment ID', 'Name', 'Type', 'Make', 'Model', 'Year', 'Status', 'Date Added'],
+                    ...equipmentData.map(eq => [
+                        eq.equipmentId || '',
+                        eq.name || '',
+                        eq.type || '',
+                        eq.make || '',
+                        eq.model || '',
+                        eq.year || '',
+                        eq.status || '',
+                        new Date(eq.dateAdded).toLocaleDateString()
+                    ])
+                ];
+                filename = `equipment_${new Date().toISOString().split('T')[0]}.csv`;
+            } else if (type === 'maintenance') {
+                data = [
+                    ['Date', 'Equipment', 'Type', 'Cost', 'Technician', 'Description'],
+                    ...maintenanceData.map(m => {
+                        const equipment = equipmentData.find(eq => eq.id === m.equipmentId);
+                        return [
+                            new Date(m.date).toLocaleDateString(),
+                            equipment ? equipment.name : 'Unknown Equipment',
+                            m.type || '',
+                            (m.cost || 0).toFixed(2),
+                            m.technician || '',
+                            m.description || ''
+                        ];
+                    })
+                ];
+                filename = `maintenance_${new Date().toISOString().split('T')[0]}.csv`;
+            }
+            
+            const csv = data.map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Report generation
+        window.generateReport = function() {
+            const reportType = document.getElementById('reportType').value;
+            const dateFrom = document.getElementById('reportDateFrom').value;
+            const dateTo = document.getElementById('reportDateTo').value;
+            const resultsDiv = document.getElementById('reportResults');
+            
+            let reportData = [];
+            let reportTitle = '';
+            
+            switch (reportType) {
+                case 'maintenance-costs':
+                    reportTitle = 'Maintenance Costs Report';
+                    let filteredMaintenance = maintenanceData;
+                    
+                    if (dateFrom) {
+                        filteredMaintenance = filteredMaintenance.filter(m => m.date >= dateFrom);
+                    }
+                    if (dateTo) {
+                        filteredMaintenance = filteredMaintenance.filter(m => m.date <= dateTo);
+                    }
+                    
+                    const totalCost = filteredMaintenance.reduce((sum, m) => sum + (m.cost || 0), 0);
+                    const avgCost = filteredMaintenance.length > 0 ? totalCost / filteredMaintenance.length : 0;
+                    
+                    reportData = [
+                        ['Total Records', filteredMaintenance.length],
+                        ['Total Cost', `${totalCost.toFixed(2)}`],
+                        ['Average Cost', `${avgCost.toFixed(2)}`]
+                    ];
+                    break;
+                    
+                case 'equipment-status':
+                    reportTitle = 'Equipment Status Report';
+                    const statusCounts = {};
+                    equipmentData.forEach(eq => {
+                        const status = eq.status || 'Unknown';
+                        statusCounts[status] = (statusCounts[status] || 0) + 1;
+                    });
+                    
+                    reportData = Object.entries(statusCounts).map(([status, count]) => [status, count]);
+                    break;
+                    
+                case 'maintenance-schedule':
+                    reportTitle = 'Maintenance Schedule Report';
+                    const typeData = {};
+                    maintenanceData.forEach(m => {
+                        const type = m.type || 'Unknown';
+                        typeData[type] = (typeData[type] || 0) + 1;
+                    });
+                    
+                    reportData = Object.entries(typeData).map(([type, count]) => [type, count]);
+                    break;
+                    
+                case 'cost-analysis':
+                    reportTitle = 'Cost Analysis Report';
+                    const equipmentCosts = {};
+                    
+                    maintenanceData.forEach(m => {
+                        const equipment = equipmentData.find(eq => eq.id === m.equipmentId);
+                        const equipmentName = equipment ? equipment.name : 'Unknown Equipment';
+                        equipmentCosts[equipmentName] = (equipmentCosts[equipmentName] || 0) + (m.cost || 0);
+                    });
+                    
+                    reportData = Object.entries(equipmentCosts)
+                        .map(([name, cost]) => [name, `${cost.toFixed(2)}`])
+                        .sort((a, b) => parseFloat(b[1].replace(', '')) - parseFloat(a[1].replace(', '')));
+                    break;
+            }
+            
+            let reportHtml = `
+                <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-top: 20px;">
+                    <h3 style="color: #2E86AB; margin-bottom: 20px;">${reportTitle}</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            reportData.forEach(([category, value]) => {
+                reportHtml += `
+                    <tr>
+                        <td>${category}</td>
+                        <td>${value}</td>
+                    </tr>
+                `;
+            });
+            
+            reportHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = reportHtml;
+        }
+
+        // Notification system
+        function showNotification(type, title, message) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <button class="notification-close" onclick="this.parentElement.remove()">&times;</button>
+                <div class="notification-title">${title}</div>
+                <div class="notification-message">${message}</div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 5000);
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('partsModal');
+            if (event.target === modal) {
+                closePartsModal();
+            }
+        });
+
+    </script>
+</body>
+</html>
